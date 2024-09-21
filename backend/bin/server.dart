@@ -92,15 +92,43 @@ Future<Response> _submitHandler(Request req) async {
 }
 
 void main(List<String> args) async {
-  // Use any available host or container IP (usually `0.0.0.0`).
+  // Lắng nghe các địa chỉ IPv4
   final ip = InternetAddress.anyIPv4;
 
-  // Configure a pipeline that logs requests.
-  final handler =
-      Pipeline().addMiddleware(logRequests()).addHandler(_router.call);
+  final corsHeader = createMiddleware(
+    requestHandler: (req) {
+      if (req.method == 'OPTION') {
+        return Response.ok('', headers: {
+          // Cho phép mọi nguồn truy cập (trong môi trường dev ). Trong môi trường prodution chúng ta nên thay bằng domain cụ thể.
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Method': 'GET, POST, PUT, DELETE, PATCH, HEAD',
+          'Access-Control-Allow-HEADERS': 'Content-Type, Authorization',
+        });
+      }
+      return null;
+    },
+    responseHandler: (res) {
+      return res.change(headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Method': 'GET, POST, PUT, DELETE, PATCH, HEAD',
+        'Access-Control-Allow-HEADERS': 'Content-Type, Authorization',
+      });
+    },
+  );
 
-  // For running in containers, we respect the PORT environment variable.
+  // Cấu hình một pipeline để logs các requests và middleware
+  final handler = Pipeline()
+      // Thêm middleware xử lý CORS
+      .addMiddleware(corsHeader)
+      .addMiddleware(logRequests())
+      .addHandler(_router.call);
+
+  // Để chạy trong cacsc container, chúng ta xử dugnj biến môi trường PORT.
+  // Nếu biến môi trường không được thiết lập nó sẽ sử dụng giá trị từ biến
+  // môi trường này; nếu không, nó sẽ sử dụng giá trị mặc đinh là 8080
   final port = int.parse(Platform.environment['PORT'] ?? '8080');
+
+  // Khởi chạy server tại địa chỉ và cổng chỉ định
   final server = await serve(handler, ip, port);
-  print('Server listening on port ${server.port}');
+  print('Server đang chạy tại http://${server.address.host}: ${server.port}');
 }
