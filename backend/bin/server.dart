@@ -13,7 +13,7 @@ final _router = Router(notFoundHandler: _notFoundHandler)
   ..post('/api/v1/submit', _submitHandler);
 
 // Header mặc định cho dữ liệu trả về dưới dạng JSON
-final _headers = {'Contents-Type': 'application/json'};
+final _headers = {'Content-Type': 'application/json'};
 
 // Xử lý các yêu cầu đến các đường dẫn không được định nghĩa (404 Not Found).
 Response _notFoundHandler(Request reg) {
@@ -22,9 +22,9 @@ Response _notFoundHandler(Request reg) {
 
 // Hàm xử lý các yêu cầu gốc tại đường dẫn '/'
 //
-// Trả về một phản hồi với thồn điệp 'Hello, World!' dưới dạng JSON
+// Trả về một phản hồi với thông điệp 'Hello, World!' dưới dạng JSON
 //
-// `reg`: Đối tượng yêu caauftuwf client
+// `reg`: Đối tượng yêu cầu t client
 //
 // Trả về: Một đối tượng `Response` với mã trạng thái 200 nội dung JSON
 Response _rootHandler(Request req) {
@@ -58,15 +58,27 @@ Future<Response> _submitHandler(Request req) async {
 
     // Lấy giá trị 'name' từ data, ép kiểu về String? nếu có
     final name = data['name'] as String?;
+    final yearOfBirth = data['yearOfBirth'] as int?;
+    final Address = data['Address'] as String?;
 
     // Kiểu tra nếu 'name' hợp lệ
     if (name != null && name.isNotEmpty) {
-      // Tạo phản hồi chào mừng
-      final response = {'message': 'Chào mừng $name'};
+      // Nếu năm sinh không có, chỉ trả về thông báo chào mừng
+      if (yearOfBirth == null || yearOfBirth <= 0) {
+        if (Address == null || Address.isNotEmpty) {}
+        return Response.ok(
+          json.encode({'message': 'Chào mừng $name!'}),
+          headers: _headers,
+        );
+      }
 
-      // Trả về phản hồi với statusCode 200 và nội dung JSON
+      // Nếu năm sinh hợp lệ, tính toán tuổi và trả về
+      final currentYear = DateTime.now().year;
+      final age = currentYear - yearOfBirth;
+
       return Response.ok(
-        json.encode(response),
+        json.encode(
+            {'message': 'Chào mừng $name!', 'age': age, 'Adress': Address}),
         headers: _headers,
       );
     } else {
@@ -97,21 +109,21 @@ void main(List<String> args) async {
 
   final corsHeader = createMiddleware(
     requestHandler: (req) {
-      if (req.method == 'OPTION') {
+      if (req.method == 'OPTIONS') {
         return Response.ok('', headers: {
           // Cho phép mọi nguồn truy cập (trong môi trường dev ). Trong môi trường prodution chúng ta nên thay bằng domain cụ thể.
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Method': 'GET, POST, PUT, DELETE, PATCH, HEAD',
-          'Access-Control-Allow-HEADERS': 'Content-Type, Authorization',
+          'Access-Control-Allow-Origin': 'http://localhost:8081',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, HEAD',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         });
       }
       return null;
     },
     responseHandler: (res) {
       return res.change(headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Method': 'GET, POST, PUT, DELETE, PATCH, HEAD',
-        'Access-Control-Allow-HEADERS': 'Content-Type, Authorization',
+        'Access-Control-Allow-Origin': 'http://localhost:8081',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, HEAD',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       });
     },
   );
